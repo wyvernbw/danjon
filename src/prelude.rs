@@ -88,6 +88,6 @@ pub trait IntoAnyhow<T> {
 
 impl<T, E: std::error::Error + Send + Sync + 'static> IntoAnyhow<T> for Result<T, E> {
     fn anyhow(self) -> anyhow::Result<T> {
-        self.map_err(|e| anyhow::Error::new(e))
+        self.map_err(|e| anyhow::Error::from(e))
     }
 }

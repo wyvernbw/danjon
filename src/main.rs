@@ -12,7 +12,7 @@ mod prelude;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let tool = select("What would you like to do?", Tool::iter().collect())?;
+    let tool = select("What would you like to do?", Tool::iter().collect());
 
     tracing::info!(?tool);
 
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[derive(Debug, EnumIter)]
+#[derive(Debug, EnumIter, Clone)]
 enum Tool {
     CalculateHp,
     CalculateAc,

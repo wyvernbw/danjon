@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use strum::{Display, EnumIter, IntoEnumIterator};
+use yansi::Paint;
 
 use crate::prelude::*;
 
@@ -20,9 +21,19 @@ impl Dice {
     pub fn prompt(prompt: &str) -> anyhow::Result<Dice> {
         let dice = select(prompt, Dice::iter().collect())?;
         let dice = match dice {
-            Dice::Other(_) => input("Enter the number of sides on your custom dice")
-                .and_then(|s| s.parse::<u8>().anyhow())
-                .map(Dice::Other)?,
+            Dice::Other(_) => {
+                let input = input("Enter the number of sides on your custom dice")
+                    .and_then(|s| s.parse::<u8>().anyhow())
+                    .map(Dice::Other);
+                match input {
+                    Ok(dice) => dice,
+                    Err(e) => {
+                        tracing::error!(?e);
+                        println!("{}", Paint::red(e));
+                        Dice::prompt(prompt)?
+                    }
+                }
+            }
             dice => dice,
         };
         Ok(dice)

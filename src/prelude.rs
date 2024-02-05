@@ -1,17 +1,26 @@
-use std::{fmt::Display, str::FromStr, sync::Arc};
+use std::{fmt::Display, process::exit, str::FromStr, sync::Arc};
 
-use inquire::Select;
+use inquire::{InquireError, Select};
 
 /// newtype pattern
 #[derive(Clone)]
 pub struct W<T>(pub T);
 
+pub fn or_cancel<T>(res: Result<T, InquireError>) -> anyhow::Result<T> {
+    res.map_err(|err| match err {
+        InquireError::OperationCanceled | InquireError::OperationInterrupted => {
+            exit(0);
+        }
+        err => anyhow::Error::new(err),
+    })
+}
+
 pub fn select<T: Display>(prompt: &str, opts: Vec<T>) -> anyhow::Result<T> {
-    Ok(Select::new(prompt, opts).prompt()?)
+    or_cancel(Select::new(prompt, opts).prompt())
 }
 
 pub fn input(prompt: &str) -> anyhow::Result<String> {
-    Ok(inquire::Text::new(prompt).prompt()?)
+    or_cancel(inquire::Text::new(prompt).prompt())
 }
 
 pub fn arc_str(string: String) -> Arc<str> {

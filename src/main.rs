@@ -1,31 +1,37 @@
-use dialoguer::{theme::ColorfulTheme, FuzzySelect};
+#![feature(lazy_cell)]
+use std::fmt::Display;
+
+use strum::{EnumIter, IntoEnumIterator};
+
+use crate::prelude::select;
+
+mod dnd;
+mod hp;
+mod prelude;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let options = vec![Tool::CalculateHp, Tool::CalculateAc];
-    let answer = FuzzySelect::with_theme(&ColorfulTheme::default())
-        .items(&options)
-        .vim_mode(true)
-        .interact()?;
-    let answer = &options[answer];
+    let tool = select("What would you like to do?", Tool::iter().collect())?;
 
-    tracing::info!(?answer);
+    tracing::info!(?tool);
+
+    match tool {
+        Tool::CalculateHp => hp::calculate_hp()?,
+        Tool::CalculateAc => todo!(),
+    }
+
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, EnumIter)]
 enum Tool {
     CalculateHp,
     CalculateAc,
 }
 
-impl ToString for Tool {
-    fn to_string(&self) -> String {
-        let slice = match self {
-            Tool::CalculateHp => "Calculate HP",
-            Tool::CalculateAc => "Calculate AC",
-        };
-        slice.to_string()
+impl Display for Tool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

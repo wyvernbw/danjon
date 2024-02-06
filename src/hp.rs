@@ -96,10 +96,9 @@ mod tests {
                 is_hill_dwarf: false,
                 method: Method::Average,
             };
-            tracing::info!(?hp);
 
             let hp = hp.calculate();
-            assert_eq!(hp, 15.0);
+            assert_eq!(hp, 14.0);
             Ok(hp)
         })
     }

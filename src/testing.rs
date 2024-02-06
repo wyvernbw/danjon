@@ -1,17 +1,23 @@
 use std::io::Write;
 
-use strip_ansi_escapes::{strip, strip_str};
+use strip_ansi_escapes::strip_str;
 use yansi::Paint;
 
 pub trait TestResult: core::fmt::Debug {}
 
 struct InnerTestWriter;
 
+impl InnerTestWriter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
 impl Write for InnerTestWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let msg = std::str::from_utf8(buf).unwrap();
         let msg = strip_str(msg);
-        let s = "\t\t   ".to_string() + &Paint::new(msg).dimmed().italic().to_string();
+        let s = "\t".to_string() + &Paint::new(msg).dimmed().italic().to_string();
         std::io::stdout().write_all(s.as_bytes()).unwrap();
         Ok(buf.len())
     }
@@ -21,13 +27,9 @@ impl Write for InnerTestWriter {
     }
 }
 
-fn inner_test_writer() -> InnerTestWriter {
-    InnerTestWriter
-}
-
 #[cfg(test)]
 pub fn test_runner(tests: &[&dyn Fn() -> TResult]) {
-    use tiny_gradient::{Gradient, GradientStr};
+    use tiny_gradient::{Gradient, GradientStr, RGB};
 
     use tracing::span;
     use tracing_subscriber::{layer::SubscriberExt, Layer};
@@ -38,13 +40,15 @@ pub fn test_runner(tests: &[&dyn Fn() -> TResult]) {
         .with_file(true)
         .with_line_number(true)
         .with_test_writer()
-        .with_writer(inner_test_writer)
+        .with_writer(InnerTestWriter::new)
         .with_filter(tracing_subscriber::filter::FilterFn::new(|metadata| {
             metadata.target() != "danjon::testing"
         }));
     let stdout = tracing_subscriber::fmt::layer()
         .pretty()
         .without_time()
+        .with_file(false)
+        .with_level(false)
         .with_file(false)
         .with_line_number(false)
         .with_test_writer()
@@ -58,17 +62,29 @@ pub fn test_runner(tests: &[&dyn Fn() -> TResult]) {
     tracing::subscriber::set_global_default(global_subscriber).unwrap();
 
     for (i, test) in tests.iter().enumerate() {
+        tracing::info!("Running test #{}...", i);
         std::panic::set_hook(Box::new(move |info| {
             let err: String = format!("{}", info).replace('\n', " ");
-            tracing::error!("Test #{} failed: \n\t{}", i, err);
+            let msg = Paint::new(format!("\nTest #{} failed: \n\t{}", i, err))
+                .bold()
+                .fg(yansi::Color::Red);
+            tracing::error!("{}", msg);
         }));
         let now = std::time::Instant::now();
         let result = span!(tracing::Level::TRACE, "Inner test").in_scope(test);
         println!();
         let elapsed = now.elapsed();
-        tracing::info!(?result, ?elapsed, "Test #{i} ... ok")
+        let ok = Paint::new("ok").fg(yansi::Color::Green).bold();
+        tracing::info!(?result, ?elapsed, "Test #{i} ... {ok}")
     }
-    tracing::info!("{}", "All tests passed".gradient(Gradient::Atlast));
+    tracing::info!(
+        "{}",
+        "✨ All tests passed!".gradient([
+            RGB::new(197, 249, 215),
+            RGB::new(247, 212, 134),
+            RGB::new(242, 122, 125)
+        ])
+    );
 }
 
 impl<T> TestResult for T where T: core::fmt::Debug {}

@@ -1,3 +1,4 @@
+use std::iter::repeat;
 use std::ops::Div;
 
 use strum::{Display, EnumIter, IntoEnumIterator};
@@ -23,9 +24,16 @@ pub fn calculate_hp() -> anyhow::Result<()> {
         method,
     };
 
-    tracing::info!(?hp);
+    tracing::debug!(?hp);
 
     let hp = hp.calculate();
+    match hp {
+        HpResult::Rolled(hp, rolls) => {
+            tracing::info!("Rolls: {:?}", rolls);
+            tracing::info!("HP: {}", hp);
+        }
+        HpResult::Average(hp) => tracing::info!("HP: {}", hp),
+    }
 
     Ok(())
 }
@@ -46,15 +54,35 @@ struct Hp {
     method: Method,
 }
 
+#[derive(Debug, PartialEq)]
+enum HpResult {
+    Rolled(f32, Vec<u8>),
+    Average(f32),
+}
+
 impl Hp {
-    fn calculate(&self) -> f32 {
+    fn calculate(&self) -> HpResult {
+        use rand::Rng;
+
         let tough_value = if self.has_tough { 2 * self.level } else { 0 } as f32;
         let hill_dwarf_value = if self.is_hill_dwarf { self.level } else { 0 } as f32;
+        let hit_dice = f32::from(self.class.hit_dice());
 
         match self.method {
-            Method::Rolled => todo!("Roll the dice"),
+            Method::Rolled => {
+                let rolls = repeat(()).take(self.level as usize - 1).map(|_| {
+                    let roll = rand::thread_rng().gen_range(1..=hit_dice as u8);
+                    tracing::trace!("Rolled a {}", roll);
+                    roll as f32 + self.con_mod as f32
+                });
+                let hp = hit_dice
+                    + self.con_mod as f32
+                    + tough_value
+                    + hill_dwarf_value
+                    + rolls.clone().sum::<f32>();
+                HpResult::Rolled(hp, rolls.map(|x| x as u8).collect())
+            }
             Method::Average => {
-                let hit_dice = f32::from(self.class.hit_dice());
                 let avg = 1.0 + hit_dice.div(2.0).ceil();
 
                 tracing::trace!(
@@ -70,11 +98,12 @@ impl Hp {
                         + f32::from(self.is_hill_dwarf) * 2.0
                 );
 
-                hit_dice
+                let hp = hit_dice
                     + self.con_mod as f32
                     + (avg + self.con_mod as f32) * (self.level - 1) as f32
                     + tough_value
-                    + hill_dwarf_value
+                    + hill_dwarf_value;
+                HpResult::Average(hp)
             }
         }
     }
@@ -87,7 +116,7 @@ mod tests {
 
     #[test_case]
     fn test_hp_barbarian() -> TResult {
-        test(|| -> anyhow::Result<f32> {
+        test(|| -> anyhow::Result<HpResult> {
             let hp = Hp {
                 class: Class::Barbarian,
                 level: 1,
@@ -98,7 +127,7 @@ mod tests {
             };
 
             let hp = hp.calculate();
-            assert_eq!(hp, 14.0);
+            assert_eq!(hp, HpResult::Average(14.0));
             Ok(hp)
         })
     }
@@ -115,7 +144,7 @@ mod tests {
                 method: Method::Average,
             };
             let hp = hp.calculate();
-            assert_eq!(hp, 44.0);
+            assert_eq!(hp, HpResult::Average(44.0));
             hp
         })
     }
@@ -132,7 +161,7 @@ mod tests {
                 method: Method::Average,
             };
             let hp = hp.calculate();
-            assert_eq!(hp, 26.0);
+            assert_eq!(hp, HpResult::Average(26.0));
             hp
         })
     }

@@ -5,6 +5,8 @@
 use std::fmt::Display;
 
 use strum::{EnumIter, IntoEnumIterator};
+use tracing::Subscriber;
+use tracing_subscriber::{filter::filter_fn, Layer};
 
 use crate::prelude::select;
 
@@ -13,12 +15,36 @@ mod hp;
 mod prelude;
 mod testing;
 
+#[cfg(debug_assertions)]
+fn subscriber() -> impl tracing::Subscriber {
+    tracing_subscriber::FmtSubscriber::default()
+}
+
+#[cfg(not(debug_assertions))]
+fn subscriber() -> impl tracing::Subscriber {
+    use tracing_subscriber::layer::SubscriberExt;
+
+    tracing_subscriber::registry().with(
+        tracing_subscriber::fmt::layer()
+            .with_target(false)
+            .with_ansi(false)
+            .pretty()
+            .with_level(false)
+            .with_file(false)
+            .with_line_number(false)
+            .without_time()
+            .with_filter(filter_fn(|metadata| {
+                metadata.level() <= &tracing::Level::INFO
+            })),
+    )
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt::init();
+    tracing::subscriber::set_global_default(subscriber())?;
 
     let tool = select("What would you like to do?", Tool::iter().collect());
 
-    tracing::info!(?tool);
+    tracing::debug!(?tool);
 
     match tool {
         Tool::CalculateHp => hp::calculate_hp()?,

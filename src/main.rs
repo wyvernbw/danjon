@@ -1,4 +1,7 @@
-#![feature(lazy_cell)]
+#![feature(panic_info_message)]
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::testing::test_runner)]
+
 use std::fmt::Display;
 
 use strum::{EnumIter, IntoEnumIterator};
@@ -8,6 +11,7 @@ use crate::prelude::select;
 mod dnd;
 mod hp;
 mod prelude;
+mod testing;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();

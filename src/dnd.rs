@@ -24,7 +24,7 @@ pub enum Dice {
 }
 
 impl Dice {
-    pub fn prompt(prompt: &str) -> anyhow::Result<Dice> {
+    pub fn prompt(prompt: &str) -> Dice {
         let dice = select(prompt, Dice::iter().collect());
         let dice = match dice {
             Dice::Other(_) => input_map(
@@ -33,7 +33,27 @@ impl Dice {
             ),
             dice => dice,
         };
-        Ok(dice)
+        dice
+    }
+}
+
+impl From<Dice> for f32 {
+    fn from(value: Dice) -> Self {
+        f32::from(u8::from(value))
+    }
+}
+
+impl From<Dice> for u8 {
+    fn from(value: Dice) -> Self {
+        match value {
+            Dice::D4 => 4,
+            Dice::D6 => 6,
+            Dice::D8 => 8,
+            Dice::D10 => 10,
+            Dice::D12 => 12,
+            Dice::D20 => 20,
+            Dice::Other(other) => other,
+        }
     }
 }
 
@@ -99,11 +119,12 @@ pub enum Class {
 }
 
 impl Class {
-    pub fn prompt() -> anyhow::Result<Class> {
+    pub fn prompt() -> Class {
         let class = select("Select a class", Class::iter().collect());
-        let class = match class {
+
+        match class {
             Class::Homebrew { .. } => {
-                let dice = Dice::prompt("Select the hit dice for your homebrew class")?;
+                let dice = Dice::prompt("Select the hit dice for your homebrew class");
                 let name = input("Enter the name of your homebrew class");
                 let name = arc_str(name);
                 Class::Homebrew {
@@ -112,7 +133,24 @@ impl Class {
                 }
             }
             _ => class,
-        };
-        Ok(class)
+        }
+    }
+    pub fn hit_dice(&self) -> Dice {
+        match self {
+            Class::Barbarian => Dice::D12,
+            Class::Bard => Dice::D8,
+            Class::Cleric => Dice::D8,
+            Class::Druid => Dice::D8,
+            Class::Fighter => Dice::D10,
+            Class::Monk => Dice::D8,
+            Class::Paladin => Dice::D10,
+            Class::Ranger => Dice::D10,
+            Class::Rogue => Dice::D8,
+            Class::Sorcerer => Dice::D6,
+            Class::Warlock => Dice::D8,
+            Class::Wizard => Dice::D6,
+            Class::Artificer => Dice::D8,
+            Class::Homebrew { hit_dice, .. } => *hit_dice,
+        }
     }
 }

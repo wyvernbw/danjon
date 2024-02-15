@@ -11,6 +11,7 @@ use tracing_subscriber::{filter::filter_fn, Layer};
 
 use crate::prelude::select;
 
+mod ac;
 mod dnd;
 mod hp;
 mod prelude;
@@ -50,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match tool {
             Tool::CalculateHp => hp::calculate_hp()?,
-            Tool::CalculateAc => todo!(),
+            Tool::CalculateAc => ac::calculate_ac()?,
         }
         let again = select(
             "What shall be your next destination?",

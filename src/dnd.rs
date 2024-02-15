@@ -154,3 +154,94 @@ impl Class {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, EnumIter, Display)]
+pub(crate) enum Armor {
+    #[strum(serialize = "No armor")]
+    NoArmor,
+    Padded,
+    Leather,
+    #[strum(serialize = "Studded leather")]
+    StuddedLeather,
+    Hide,
+    #[strum(serialize = "Chain shirt")]
+    ChainShirt,
+    #[strum(serialize = "Scale mail")]
+    ScaleMail,
+    Breastplate,
+    #[strum(serialize = "Half plate")]
+    HalfPlate,
+    #[strum(serialize = "Ring mail")]
+    RingMail,
+    #[strum(serialize = "Chain mail")]
+    ChainMail,
+    Splint,
+    Plate,
+}
+
+impl From<Armor> for u8 {
+    fn from(armor: Armor) -> u8 {
+        match armor {
+            Armor::NoArmor => 10,
+            Armor::Padded => 11,
+            Armor::Leather => 11,
+            Armor::StuddedLeather => 12,
+            Armor::Hide => 12,
+            Armor::ChainShirt => 13,
+            Armor::ScaleMail => 14,
+            Armor::Breastplate => 14,
+            Armor::HalfPlate => 15,
+            Armor::RingMail => 14,
+            Armor::ChainMail => 16,
+            Armor::Splint => 17,
+            Armor::Plate => 18,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Shield {
+    Shield,
+    NoShield,
+}
+
+impl From<Shield> for u8 {
+    fn from(shield: Shield) -> u8 {
+        match shield {
+            Shield::Shield => 2,
+            Shield::NoShield => 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UnarmoredDefense {
+    Barbarian(u8),
+    Monk(u8),
+    None,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Ac(pub Armor, pub u8, pub Shield, pub UnarmoredDefense);
+
+impl Ac {
+    pub(crate) fn calculate(&self) -> u8 {
+        let Ac(armor, dex, shield, unarmored_defense) = *self;
+        let dex = match (armor, shield, unarmored_defense) {
+            (Armor::NoArmor, _, UnarmoredDefense::Barbarian(ability)) => dex + ability,
+            (Armor::NoArmor, Shield::NoShield, UnarmoredDefense::Monk(ability)) => dex + ability,
+            _ => dex,
+        };
+        let dex = match armor {
+            Armor::NoArmor | Armor::Padded | Armor::Leather | Armor::StuddedLeather => dex,
+            Armor::Hide
+            | Armor::ChainShirt
+            | Armor::ScaleMail
+            | Armor::Breastplate
+            | Armor::HalfPlate => dex.clamp(0, 2),
+            Armor::RingMail | Armor::ChainMail | Armor::Splint | Armor::Plate => 0,
+        };
+
+        u8::from(armor) + dex + u8::from(shield)
+    }
+}

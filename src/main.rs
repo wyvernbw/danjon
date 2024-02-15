@@ -4,6 +4,7 @@
 
 use std::fmt::Display;
 
+use crossterm::{execute, terminal::ClearType};
 use strum::{EnumIter, IntoEnumIterator};
 use tracing::Subscriber;
 use tracing_subscriber::{filter::filter_fn, Layer};
@@ -46,12 +47,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::debug!(?tool);
 
-    match tool {
-        Tool::CalculateHp => hp::calculate_hp()?,
-        Tool::CalculateAc => todo!(),
+    loop {
+        match tool {
+            Tool::CalculateHp => hp::calculate_hp()?,
+            Tool::CalculateAc => todo!(),
+        }
+        let again = select(
+            "What shall be your next destination?",
+            vec!["Main menu", "Exit"],
+        );
+        match again {
+            "Main menu" => {
+                execute!(
+                    std::io::stdout(),
+                    crossterm::terminal::Clear(ClearType::All)
+                )?;
+            }
+            "Exit" => std::process::exit(0),
+            _ => unreachable!(),
+        }
     }
-
-    Ok(())
 }
 
 #[derive(Debug, EnumIter, Clone)]
@@ -62,6 +77,10 @@ enum Tool {
 
 impl Display for Tool {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        let string = match self {
+            Tool::CalculateHp => "Calculate HP".to_string(),
+            Tool::CalculateAc => "Calculate AC".to_string(),
+        };
+        write!(f, "{}", string)
     }
 }
